@@ -13,7 +13,7 @@ public class SOQLBuilder {
     private SOQLBuilder(){}
     
     /**
-     * Construct a SQL Query based on SObject String name.
+     * Construct a SOQL Query based on SObject String name.
      * In this case, all fields will be retrieved.
      * 
      * @return a SoqlBuilder instance.
