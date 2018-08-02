@@ -1,0 +1,50 @@
+/**
+ * 
+ * The FieldDefinition represents a SObject field definitions.
+ * @author: Jimens Lima - me@jimens.com
+ */
+public class FieldDefinition implements Comparable {
+	
+    public String  name        							{get;set;}
+    public String  label 	   							{get;set;}
+    public String  helpText    							{get;set;}
+    public Boolean isLookup    							{get;set;}
+    public Boolean isRestrictedPicklist					{get;set;}
+    public Object  objValue    							{get;set;}
+    public String  stringValue 							{get;set;}
+    public Schema.DisplayType type  					{get;set;}
+    public List<PicklistEntry> pickListValues			{get;set;}
+
+    /**
+     * Used to sort field labels in ascending order.
+     */
+    public Integer compareTo(Object obj){
+        try{
+            if(label!=null){
+                String objLabel = ((FieldDefinition)obj).label;
+                if(objLabel!=null){
+                	return label.compareTo(objLabel);    
+                }
+            }
+        }catch(Exception e){
+            System.debug('error on compareTo:'+e.getStackTraceString());
+        }
+        return -1;
+    }
+    
+    public class PicklistEntry {
+        public String label 			{get;set;}
+        public String value 			{get;set;}
+        public Boolean isActive 		{get;set;}
+        public Boolean isDefaultValue 	{get;set;}
+        
+        public PicklistEntry(){}
+        
+        public PicklistEntry(Schema.PicklistEntry entry){
+            this.label 			= entry.label;
+            this.value 			= entry.value;
+            this.isActive 		= entry.isActive();
+            this.isDefaultValue = entry.isDefaultValue();
+        }
+    }
+}

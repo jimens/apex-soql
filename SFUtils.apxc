@@ -1,0 +1,187 @@
+/**
+ * 
+ * @author: Jimens Lima - me@jimens.com
+ */
+public class SFUtils {
+
+    public static boolean isEmpty(String str){
+        
+        if(str!=null && !String.isEmpty(str) && !String.isBlank(str)){
+            return false;
+        }
+        return true;
+    }
+      
+    //Verify if the List is really empty
+    public static boolean isEmpty(List<Object> value){
+		        
+        if(value==null || value.isEmpty()){
+            return true;
+        }
+        return false;
+    }
+    
+    
+    //Verify if the Set is really empty
+    public static boolean isEmpty(Set<ID> value){
+		        
+        if(value==null || value.isEmpty()){
+            return true;
+        }
+        return false;
+    }
+    
+    
+    
+    //Verify if a selected list has a specific object.
+    public static boolean contains(List<SObject> objects, SObject obj){
+
+        if(objects!=null){
+            for(SObject localObject: objects){
+                if(localObject.Id.equals(obj.Id)){
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    //Returns the specific object position on selected list.
+    public static Integer getObjectPosition(List<SObject> objects,SObject obj){
+        Integer position = -1;
+        if(objects!=null && obj!=null){
+            for(SObject localObject: objects){
+                position++;
+                if(localObject.Id.equals(obj.Id)){
+                    return position;
+                }
+            }
+        }
+        return position;
+    }
+    
+    /**
+     * Convert a List in an 'in ()' String SQL statement.
+     * @return 'in ('123','456','789') statement.
+     */ 
+    public static String generateInStatement(List<String> values){
+        String stmt = '';
+        if(values!=null){
+            for(String value: values){
+                stmt += '\''+value+'\',';
+            }
+            stmt = 'IN ('+ stmt.substring(0, stmt.length()-1) + ')';
+        }
+        return stmt;
+    }
+    
+
+    /**
+     * Convert a List in an 'in ()' String SQL statement.
+     * @return 'in ('123','456','789') statement.
+     */
+    public static String generateInStatement(List<SObject> values){
+        String stmt = '';
+        for(SObject sObj: values){
+            stmt += '\''+sObj.Id+'\',';
+        }
+        stmt = 'IN ('+ stmt.substring(0, stmt.length()-1) + ')';
+        
+        return stmt;
+    }
+    
+    
+    /**
+     * Convert a List in an 'in ()' String SQL statement.
+     * @return 'in ('123','456','789') statement.
+     */
+    public static String generateInStatement(Set<ID> values){
+        String stmt = '';
+        for(ID idValue: values){
+            stmt += '\''+idValue+'\',';
+        }
+        stmt = 'IN ('+ stmt.substring(0, stmt.length()-1) + ')';
+        
+        return stmt;
+    }
+    
+    
+    /**
+     * @param elements - A List of SObject elements.
+     * @param LIMIT_OF_RECORDS - Range of records.
+     * @return: A sublist ob elements based on limit of records.
+     */
+    public static List<List<SObject>> subList(List<SObject> elements, Integer LIMIT_OF_RECORDS){
+        
+        List<List<SObject>> fullList =  new List<List<SObject>>();
+
+        List<SObject> splittedList = new List<SObject>();
+        for (SObject splittedElement : elements) {
+            
+            if(splittedList.size() < LIMIT_OF_RECORDS){
+                splittedList.add(splittedElement); 
+            }else if(LIMIT_OF_RECORDS == splittedList.size()){
+                fullList.add(splittedList);
+                splittedList = new List<SObject>();
+                splittedList.add(splittedElement); 
+            }
+        }
+        
+        if(splittedList.size()<=LIMIT_OF_RECORDS){
+            fullList.add(splittedList);
+        }
+        
+        return fullList;
+    }
+    
+    /**
+     * @param elements - A Set of ID elements.
+     * @param LIMIT_OF_RECORDS - Range of records.
+     * @return: A subset of elements based on record limits.
+     */
+    public static Set<Set<ID>> subSet(Set<ID> elements, Integer LIMIT_OF_RECORDS){
+        
+        Set<Set<ID>> fullSet = new Set<Set<ID>>();
+
+        Set<ID> splittedSet = new Set<ID>();
+        for (ID splittedElement : elements) {
+            
+            if(splittedSet.size() < LIMIT_OF_RECORDS){
+                splittedSet.add(splittedElement);
+            }else if(LIMIT_OF_RECORDS == splittedSet.size()){
+                fullSet.add(splittedSet);
+                splittedSet = new Set<ID>();
+                splittedSet.add(splittedElement); 
+            }
+        }
+        
+        if(splittedSet.size()<=LIMIT_OF_RECORDS){
+            fullSet.add(splittedSet);
+        }
+        
+        return fullSet;
+        
+    }
+	
+	/**
+	 * @param A List of SObject
+	 * @return A Set<ID> with all ID's.
+	 */    
+    public static Set<ID> getIDs(List<SObject> values){
+        Set<ID> ids = new Set<ID>();
+        for(SObject obj : values){
+            ids.add(obj.ID);
+        }
+        return ids;
+    }
+    
+    public static String getStackTrace(Exception e){
+        
+        String stackTrace  = 'Message: '+e.getMessage();
+        	   stackTrace += '\n Cause: '+e.getCause();
+        	   stackTrace += '\n Line Number: '+e.getLineNumber();	
+        	   stackTrace += '\n Entire Stack: '+e.getStackTraceString();
+        
+        return stackTrace;
+    }
+}

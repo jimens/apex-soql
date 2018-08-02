@@ -1,0 +1,385 @@
+/**
+ * 
+ * @author: Jimens Lima - me@jimens.com
+ *
+ */
+public class SOQLBuilder {
+
+    private String query {get;set;}
+    private Integer fieldSize {get;set;}
+    private static SOQLBuilder instance {get;set;}
+    private static Set<String> defaultFields = new Set<String>{'createdbyid','lastmodifiedbyid','connectionreceivedid','connectionsentid','recordtypeid','ownerid'};
+    private static Set<String> nameFields 	 = new Set<String>{'CreatedBy.FirstName','CreatedBy.LastName','LastModifiedBy.FirstName','LastModifiedBy.LastName'};
+    private SOQLBuilder(){}
+    
+    /**
+     * Construct a SQL Query based on SObject String name.
+     * In this case, all fields will be retrieved.
+     * 
+     * @return a SoqlBuilder instance.
+     */
+    public static SOQLBuilder selectx(String sObjectName){
+        
+        instance = new SOQLBuilder();
+        
+        try{
+
+            String fields = ''; 
+            Map<String, Schema.SObjectField> objectFields = Schema.getGlobalDescribe().get(sObjectName).getDescribe().fields.getMap();
+            instance.fieldSize = 1;
+            String fieldName = '';
+
+            for(String key : objectFields.keySet()) {
+                
+                Schema.SObjectField objField = objectFields.get(key);
+                Schema.DescribeFieldResult fieldResult = objField.getDescribe();
+                if(defaultFields.contains(key) || !fieldResult.isAccessible()){
+                    continue;
+                }
+                
+                String fieldCamelCase = fieldResult.getName();
+                key = fieldCamelCase;
+                if(Schema.DisplayType.REFERENCE==fieldResult.getType()){
+                    
+                    if(key.endsWith('__c')){
+                        key = key.replace('__c', '__r');
+                    }
+                    
+                    fieldName += ' ' + key + '.Name, ';
+                }else{
+                	fieldName += ' ' + key + ', ';
+                }
+                
+
+                instance.fieldSize++;
+            }
+            
+            for(String key : nameFields){
+                fieldName += ' ' + key + ', ';
+            }
+            
+            fields = fieldName.substring(0, fieldName.length()-2);
+            fields += ' FROM '+sObjectName;
+            
+			instance.query = 'SELECT '+ fields;
+            
+        }catch(Exception e){
+           // System.debug(SFUtils.getStackTrace(e));
+        }
+        
+		return instance;        
+    }
+    
+    /***
+     * Remove a record by ID
+     */
+    public static void removeById(String sObjectName,String objId){
+        
+        String query = 'SELECT Id FROM '+sObjectName+ ' WHERE ID= \'' + objId + '\'';
+        List<SObject> recordsToRemove =  Database.query(query);
+        
+        if(!recordsToRemove.isEmpty()){
+            delete recordsToRemove;
+        }
+    }
+    
+    public SOQLBuilder wherex(String fieldName, String value){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(value)){
+        	instance.query += ' WHERE '+ fieldName + ' = \'' + value + '\'';
+        }else{
+            throw new ApplicationException('Invalid where clause!');
+        }
+        return instance;
+    }
+    
+     public SOQLBuilder likex(String fieldName, String value){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(value)){
+            String param = '\'%'+value+'%\'';
+        	instance.query += ' WHERE '+ fieldName + ' LIKE ' + param;
+        }else{
+            throw new ApplicationException('Invalid like clause!');
+        }
+        return instance;
+    }
+    
+    public SOQLBuilder inx(String fieldName, List<String> values){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(values)){
+            
+			String inStmt = SFUtils.generateInStatement(values);
+            instance.query += ' WHERE ' + fieldName +' '+ inStmt;
+
+        }else{
+           throw new ApplicationException('Invalid in clause!');
+        }
+        
+        return instance;
+    }
+
+	public SOQLBuilder inx(String fieldName, List<SObject> values){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(values)){
+            
+			String inStmt = SFUtils.generateInStatement(values);
+            instance.query += ' WHERE ' + + fieldName +' '+ inStmt;
+
+        }else{
+           throw new ApplicationException('Invalid in clause');
+        }
+        
+        return instance;
+    }
+    
+    public SOQLBuilder inx(String fieldName, Set<ID> values){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(values)){
+            
+			String inStmt = SFUtils.generateInStatement(values);
+            instance.query += ' WHERE ' + + fieldName +' '+ inStmt;
+
+        }else{
+           throw new ApplicationException('Invalid in clause');
+        }
+        
+        return instance;
+    }
+    
+    public SOQLBuilder notIn(String fieldName, List<String> inValues){
+        if(!SFUtils.isEmpty(inValues)){
+            
+			String inStmt = SFUtils.generateInStatement(inValues);
+            instance.query += ' WHERE '+fieldName+ ' NOT '+ inStmt;
+
+        }else{
+           throw new ApplicationException('Invalid in clause');
+        }
+        
+        return instance;
+    }
+
+	public SOQLBuilder notIn(String fieldName, List<SObject> inValues){
+        if(!SFUtils.isEmpty(inValues)){
+            
+			String inStmt = SFUtils.generateInStatement(inValues);
+            instance.query += ' WHERE '+fieldName+ ' NOT '+ inStmt;
+
+        }else{
+           throw new ApplicationException('Invalid in clause');
+        }
+        
+        return instance;
+    }
+    
+    public SOQLBuilder differentOf(String fieldName,String value){
+        instance.query += ' WHERE ' + fieldName +' != \''+ value + '\'';
+        
+        
+        return instance;
+    }
+    
+    public SOQLBuilder andEquals(String fieldName, String fieldValue){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(fieldValue)){
+            
+            instance.query += ' AND ' + fieldName +' = \''+ fieldValue + '\'';
+
+        }else{
+           throw new ApplicationException('Invalid AND clause!');
+        }
+        
+        return instance;
+    }
+
+    public SOQLBuilder andNotEquals(String fieldName, String fieldValue){
+        if(!SFUtils.isEmpty(fieldName) && !SFUtils.isEmpty(fieldValue)){
+            
+            instance.query += ' AND ' + fieldName +' != \''+ fieldValue + '\'';
+
+        }else{
+           throw new ApplicationException('Invalid AND clause!');
+        }
+        
+        return instance;
+    }
+
+    
+    public String toSOQL(){
+        return instance.query;
+    }
+    
+    public Integer getFieldSize(){
+        return fieldSize;
+    }
+    
+    /**
+     * Execute a Query limited to 100 elements.
+     * Avoiding the SFDC Limits.
+     * 
+     * @return A SObject List with 100 elements.
+     */
+    public List<SObject> execute(){
+		return execute(100);
+    }
+	    
+    public List<SObject> execute(Integer queryLimit){
+        
+        if(queryLimit>0){
+        	instance.query += ' LIMIT '+queryLimit;
+            return Database.query(instance.query);
+        }
+        return null;
+    }
+    
+    public List<SObject> executeAll(){
+        return Database.query(instance.query);
+    }
+    
+    /**
+     * Retrieve a List of Lists with FieldDefinition element.
+     * Each FieldDefinition iteration element represents an entire SObject row.
+     */
+    public List<List<FieldDefinition>> retrieveOrderedFields(){
+        
+        //System.debug('instance.query='+instance.query);
+        List<SObject> queryResult = Database.query(instance.query);
+		
+        List<List<FieldDefinition>> fieldResults = new List<List<FieldDefinition>>();
+        
+        for(SObject sObj : queryResult){
+			
+            List<FieldDefinition> fieldIteration = new List<FieldDefinition>();
+
+            
+            for (Schema.SObjectField fieldName : sObj.getSObjectType().getDescribe().fields.getMap().values()) {
+                try{
+        			
+                    if(sObj!=null){
+                        Schema.DescribeFieldResult fieldResult = fieldName.getDescribe();
+                        FieldDefinition field = new FieldDefinition();
+                        field.name  = fieldResult.getName();
+                        field.label = fieldResult.getLabel();
+                        field.type = fieldResult.getType();
+                        
+                        if(Schema.DisplayType.REFERENCE==fieldResult.getType()){
+                            
+                            String fieldStrName = fieldResult.getName();
+                            
+                            if(fieldStrName.endsWith('__c')){
+                                fieldStrName = fieldStrName.replace('__c', '__r');
+                            }
+                            field.stringValue = String.valueOf(sObj.getSObject(fieldStrName).get('Name'));
+                        }else{
+                            field.objValue    = sObj.get(fieldResult.getName());
+                            field.stringValue = String.valueOf(field.objValue);
+                        }
+                        
+                        fieldIteration.add(field);
+                        
+                    }
+                }catch(Exception e){
+                    System.debug(SFUtils.getStackTrace(e));
+                }
+        	}
+        	fieldIteration.sort();
+            fieldResults.add(fieldIteration);
+        }
+        return fieldResults;
+    }
+    
+     /**
+     * Retrieve a List of Lists with FieldDefinition element.
+     * Each FieldDefinition iteration element represents an entire SObject row.
+     */
+    public List<List<FieldDefinition>> retrieveFields(){
+        
+        //System.debug('instance.query='+instance.query);
+        List<SObject> queryResult = Database.query(instance.query);
+		
+        List<List<FieldDefinition>> fieldResults = new List<List<FieldDefinition>>();
+        
+        for(SObject sObj : queryResult){
+			
+            List<FieldDefinition> fieldIteration = new List<FieldDefinition>();
+
+            for (Schema.SObjectField fieldName : sObj.getSObjectType().getDescribe().fields.getMap().values()) {
+                try{
+        
+                    Schema.DescribeFieldResult fieldResult = fieldName.getDescribe();
+                    FieldDefinition field = new FieldDefinition();
+                    field.name  = fieldResult.getName();
+                    field.label = fieldResult.getLabel();
+                    field.type = fieldResult.getType();
+                    
+                    if(Schema.DisplayType.REFERENCE==fieldResult.getType()){
+                        
+                        String fieldStrName = fieldResult.getName();
+                        
+                        if(fieldStrName.endsWith('__c')){
+                            fieldStrName = fieldStrName.replace('__c', '__r');
+                        }
+                        field.stringValue = String.valueOf(sObj.getSObject(fieldStrName).get('Name'));
+                    }else{
+                        field.objValue    = sObj.get(fieldResult.getName());
+                        field.stringValue = String.valueOf(field.objValue);
+                    }
+                    
+                    fieldIteration.add(field);
+                }catch(Exception e){
+                    //System.debug(SFUtils.getStackTrace(e));
+                }
+        	}
+        	//fieldIteration.sort();
+            fieldResults.add(fieldIteration);
+        }
+        return fieldResults;
+    }
+    
+    
+    
+    /**
+     * Describe the existing fields on a SObject.
+     * @return List of FieldDefinition.
+     */
+    public static List<FieldDefinition> describe(String sObjectName){
+        List<FieldDefinition> fieldIteration = new List<FieldDefinition>();
+        try{
+            String fields = ''; 
+            Map<String, Schema.SObjectField> objectFields = Schema.getGlobalDescribe().get(sObjectName).getDescribe().fields.getMap();
+
+            String fieldName = '';
+            if(objectFields!=null){
+            
+                for(String key : objectFields.keySet()) {
+
+                    Schema.SObjectField objField = objectFields.get(key);
+                    Schema.DescribeFieldResult fieldResult = objField.getDescribe();
+                    if(defaultFields.contains(key)){
+                        continue;
+                    }
+                    if(fieldResult.getLabel()==null){
+                        continue;
+                    }
+                    
+                    FieldDefinition field = new FieldDefinition();
+                    field.name  = fieldResult.getName();
+                    field.label = fieldResult.getLabel();
+                    field.type  = fieldResult.getType();
+                    field.isLookup = (fieldResult.isIdLookup() && !fieldResult.isExternalID());
+                    field.isRestrictedPicklist = fieldResult.isRestrictedPicklist();
+                    
+                    if(Schema.DisplayType.PICKLIST == fieldResult.getType() || Schema.DisplayType.MULTIPICKLIST == fieldResult.getType()){
+                        List<FieldDefinition.PicklistEntry> lov = new List<FieldDefinition.PicklistEntry>();
+                        for(Schema.PicklistEntry entry : fieldResult.getPicklistValues()){
+                            lov.add(new FieldDefinition.PicklistEntry(entry));
+                        }
+                        field.pickListValues = lov;
+                    }
+
+                    fieldIteration.add(field);
+            	}
+            	fieldIteration.sort();
+            }
+
+        }catch(Exception e){
+            //System.debug(e.getStackTraceString());
+        }
+        
+        return fieldIteration;
+    }
+}
